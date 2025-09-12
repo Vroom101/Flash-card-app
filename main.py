@@ -1,77 +1,141 @@
+"""
+A flashcard application for learning French words.
+
+This application displays French words as flashcards. Users can flip the cards
+to see the English translation and mark words as "known" to remove them from
+the learning list. The progress is saved to a CSV file.
+"""
 import random
+import pandas
+from tkinter import *
 
 BACKGROUND_COLOR = "#B1DDC6"
-from tkinter import *
-import pandas
-current_card={}
-to_learn={}
-
-try:
-    data = pandas.read_csv("data/words_to_learn.csv")
-except FileNotFoundError:
-    original_data = pandas.read_csv("data/french_words.csv")
-    to_learn= original_data.to_dict(orient="records")
-else:
-    to_learn = data.to_dict(orient="records")
-
-def next_card():
-    global current_card,flip_timer
-    windows.after_cancel(flip_timer)
-    current_card = random.choice(to_learn)
-    canvas.itemconfig(card_title , text="French",fill = "black")
-    canvas.itemconfig(card_word, text=current_card["French"], fill="black")
-    canvas.itemconfig(front_image , image=front_side)
-    flip_timer= windows.after(ms=3000, func=back_card)
-def back_card():
-    canvas.itemconfig(front_image , image=back_side)
-    canvas.itemconfig(card_title,text="English" ,fill="#FFFFFF")
-    canvas.itemconfig(card_word,text=current_card["English"] , fill="#FFFFFF")
-
-def is_known():
-    to_learn.remove(current_card)
-    data = pandas.DataFrame(to_learn)
-    data.to_csv("data/words_to_learn.csv" , index=False)
-    next_card()
 
 
+class FlashCardApp:
+    """
+    A class to represent the Flashcard Application.
 
-windows = Tk()
-windows.title("Flashy")
-windows.config(padx=50 , pady=50,bg=BACKGROUND_COLOR)
+    This class encapsulates the entire functionality of the flashcard application,
+    including the user interface, card logic, and data handling.
 
-flip_timer= windows.after(ms=3000,func=back_card)
+    Attributes
+    ----------
+    window : Tk
+        The main window of the application.
+    canvas : Canvas
+        The canvas where the flashcards are displayed.
+    to_learn : list
+        A list of dictionaries, where each dictionary is a word to learn.
+    current_card : dict
+        The current word being displayed.
+    flip_timer : str
+        The timer for flipping the card.
+    front_side_img : PhotoImage
+        The image for the front of the card.
+    back_side_img : PhotoImage
+        The image for the back of the card.
+    card_background : int
+        The image item on the canvas.
+    card_title : int
+        The text item for the card title.
+    card_word : int
+        The text item for the card word.
 
-canvas =Canvas(width=800 ,height=526 ,bg = BACKGROUND_COLOR,highlightthickness=0)
-front_side = PhotoImage(file="images/card_front.png")
-back_side = PhotoImage(file="images/card_back.png")
-front_image = canvas.create_image(400, 263 , image=front_side)
-canvas.grid(row=0 ,column=0 , columnspan =2)
-card_title = canvas.create_text(400 , 150 ,font=("Ariel" ,40 ,"italic" ))
-card_word = canvas.create_text(400 , 263  , font=("Ariel" , 60 ,"bold"))
+    Methods
+    -------
+    next_card():
+        Displays the next flashcard.
+    flip_card():
+        Flips the current flashcard to show the English translation.
+    is_known():
+        Marks the current word as known.
+    """
 
-cross_image =PhotoImage(file="images/wrong.png")
-unknown_button = Button(image=cross_image,highlightthickness=0, command=next_card)
-unknown_button.grid(row=1,column=0)
+    def __init__(self):
+        """
+        Constructs all the necessary attributes for the FlashCardApp object
+        and sets up the UI.
+        """
+        self.window = Tk()
+        self.window.title("Flashy")
+        self.window.config(padx=50, pady=50, bg=BACKGROUND_COLOR)
 
-check_image = PhotoImage(file="images/right.png")
-known_button = Button(image=check_image,highlightthickness=0,command=is_known)
-known_button.grid(row = 1 ,column= 1 )
+        self.to_learn = self._load_words()
+        self.current_card = {}
+
+        self.canvas = Canvas(width=800, height=526, bg=BACKGROUND_COLOR, highlightthickness=0)
+        self.front_side_img = PhotoImage(file="images/card_front.png")
+        self.back_side_img = PhotoImage(file="images/card_back.png")
+        self.card_background = self.canvas.create_image(400, 263, image=self.front_side_img)
+        self.card_title = self.canvas.create_text(400, 150, font=("Ariel", 40, "italic"))
+        self.card_word = self.canvas.create_text(400, 263, font=("Ariel", 60, "bold"))
+        self.canvas.grid(row=0, column=0, columnspan=2)
+
+        cross_image = PhotoImage(file="images/wrong.png")
+        self.unknown_button = Button(image=cross_image, highlightthickness=0, command=self.next_card)
+        self.unknown_button.grid(row=1, column=0)
+
+        check_image = PhotoImage(file="images/right.png")
+        self.known_button = Button(image=check_image, highlightthickness=0, command=self.is_known)
+        self.known_button.grid(row=1, column=1)
+
+        self.flip_timer = self.window.after(3000, self.flip_card)
+        self.next_card()
+
+        self.window.mainloop()
+
+    def _load_words(self):
+        """Loads words from a CSV file.
+
+        Tries to load words from 'data/words_to_learn.csv'. If the file is
+        not found, it loads words from 'data/french_words.csv'.
+
+        Returns:
+            list: A list of dictionaries, where each dictionary represents a word.
+        """
+        try:
+            data = pandas.read_csv("data/words_to_learn.csv")
+        except FileNotFoundError:
+            original_data = pandas.read_csv("data/french_words.csv")
+            return original_data.to_dict(orient="records")
+        else:
+            return data.to_dict(orient="records")
+
+    def next_card(self):
+        """Displays the next flashcard.
+
+        This function cancels any pending card flip, selects a random word from
+        the `to_learn` list, and updates the canvas to show the French word.
+        It also schedules the card to be flipped to the English side after 3 seconds.
+        """
+        self.window.after_cancel(self.flip_timer)
+        self.current_card = random.choice(self.to_learn)
+        self.canvas.itemconfig(self.card_title, text="French", fill="black")
+        self.canvas.itemconfig(self.card_word, text=self.current_card["French"], fill="black")
+        self.canvas.itemconfig(self.card_background, image=self.front_side_img)
+        self.flip_timer = self.window.after(3000, self.flip_card)
+
+    def flip_card(self):
+        """Flips the current flashcard to show the English translation.
+
+        Updates the canvas to display the English translation of the current word.
+        """
+        self.canvas.itemconfig(self.card_title, text="English", fill="white")
+        self.canvas.itemconfig(self.card_word, text=self.current_card["English"], fill="white")
+        self.canvas.itemconfig(self.card_background, image=self.back_side_img)
+
+    def is_known(self):
+        """Marks the current word as known.
+
+        Removes the current word from the `to_learn` list, saves the updated list
+        to `data/words_to_learn.csv`, and displays the next card.
+        """
+        self.to_learn.remove(self.current_card)
+        data = pandas.DataFrame(self.to_learn)
+        data.to_csv("data/words_to_learn.csv", index=False)
+        self.next_card()
 
 
-next_card()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-windows.mainloop()
+if __name__ == "__main__":
+    app = FlashCardApp()
