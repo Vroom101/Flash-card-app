@@ -21,8 +21,8 @@ This is a simple flashcard application built with Python and Tkinter to help you
 1. **Clone the repository and navigate into the directory:**
    ```bash
    # Make sure to replace the URL with the actual URL of the repository
-   git clone https://github.com/your-username/your-repository-name.git
-   cd your-repository-name
+   git clone https://github.com/Vroom101/Flash-card-app
+   cd Flash-card-app
    ```
 
 2. **Create and activate a virtual environment (optional but recommended):**
